@@ -147,21 +147,21 @@ if __name__ == '__main__':
     
     corners = (9, 6)
     debug_dir = None
-    square_size = 0.034     # 3.4 cm apart (PM)
+    square_size = 0.034
     threads = 4
     
     # XXX use defaults
     def usage():
         print('''
-camera calibration for distorted images with chess board samples
-reads distorted images, calculates the calibration and write undistorted images
+OpenCV Camera calibration for distorted images with chessboard samples.
+Reads distorted images, calculates the calibration and writes undistorted images.
 
 usage:
-    calibrate.py [options] <image files...>
+    calibrate.py [options] <images>...
 
 default values:
     -c <w>x<h>      Number of *inner* corners of the chessboard pattern (default: 9x6)
-    -s <size>       Square size in cm (default: 0.0225)
+    -s <size>       Square size in m (default: 0.0225)
     -t <threads>    Number of threads to use (default: 4)
     -d <dir>        Write debug images to dir
 ''')
@@ -192,6 +192,7 @@ default values:
 
     if len(args) == 0:
         print('No images provided!')
+        usage()
         sys.exit(-1)
         
     image_files = args
