@@ -34,6 +34,7 @@ scene.render.resolution_y = j['image_resolution'][1]
 
 # Chessboard
 
+# Corner vertices
 chessboard_points = numpy.array(j['chessboard_points'], 'float32')
 
 chessboard_mesh = bpy.data.meshes.new(name='chessboard corners')
@@ -45,6 +46,71 @@ chessboard_mesh.update()
     
 chessboard_object = bpy.data.objects.new(name='chessboard corners', object_data=chessboard_mesh)
 bpy.context.scene.collection.objects.link(chessboard_object)    
+
+# Textured quad
+
+spacing = j['chessboard_spacing_m']
+corners = j['chessboard_inner_corners']
+
+vertices = numpy.array([
+    -spacing,           -spacing,               0,
+    spacing*corners[0], -spacing,               0,
+    spacing*corners[0], spacing*corners[1],     0,
+    -spacing,           spacing*corners[1],     0
+], 'float32')
+indices = numpy.array([0, 1, 2, 3], 'uint32')
+loop_start = numpy.array([0], 'uint32')
+loop_total = numpy.array([4], 'uint32')
+uvs = numpy.array([
+    0, 0, 
+    1, 0,
+    1, 1, 
+    0, 1
+], 'float32')
+
+m = bpy.data.meshes.new(name='chessboard')
+m.vertices.add(4)
+m.vertices.foreach_set('co', vertices)
+m.loops.add(4)
+m.loops.foreach_set('vertex_index', indices)
+m.polygons.add(1)
+m.polygons.foreach_set('loop_start', loop_start)
+m.polygons.foreach_set('loop_total', loop_total)
+uv_layer = m.uv_layers.new(name='uvs')
+uv_layer.data.foreach_set('uv', uvs)
+m.update()
+if m.validate(verbose=True):
+    print('Mesh data did not validate!')
+    
+mat = bpy.data.materials.new('chessboard')
+mat.use_nodes = True
+nodes = mat.node_tree.nodes
+nodes.clear()
+texcoord = nodes.new(type='ShaderNodeTexCoord')
+texcoord.location = 0, 300
+mapping = nodes.new(type='ShaderNodeMapping')
+mapping.location = 200, 300
+mapping.inputs['Scale'].default_value = (corners[0]+1, corners[1]+1, 1)
+checktex = nodes.new(type='ShaderNodeTexChecker')
+checktex.location = 400, 300
+checktex.inputs['Color2'].default_value = 0, 0, 0, 1
+checktex.inputs['Scale'].default_value = 1.0
+emission = nodes.new(type='ShaderNodeEmission')
+emission.location = 600, 300
+node_output = nodes.new(type='ShaderNodeOutputMaterial')
+node_output.location = 800, 300
+links = mat.node_tree.links
+links.new(texcoord.outputs['UV'], mapping.inputs['Vector'])
+links.new(mapping.outputs['Vector'], checktex.inputs['Vector'])
+links.new(checktex.outputs['Color'], emission.inputs['Color'])
+links.new(emission.outputs['Emission'], node_output.inputs['Surface'])
+
+m.materials.append(mat)
+
+o = bpy.data.objects.new(name='chessboard', object_data=m)
+bpy.context.scene.collection.objects.link(o)    
+# Hide by default
+o.hide_set(True)
 
 # Cameras
 

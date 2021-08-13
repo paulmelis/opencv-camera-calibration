@@ -1,15 +1,4 @@
 #!/usr/bin/env python
-
-# Calibration pattern shown on screen.
-# 9x6 inner points, 3.4 cm between points
-#
-# Note the quotes:
-#
-# $ ./calibrate.py 'frames/subsampled00*.png'
-#
-# Based on OpenCV example?
-# PM 20200331 (corona)
-# PM 20210812 (still corona)
 import json, os
 import numpy as np
 import cv2
@@ -38,7 +27,7 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
     
     j['chessboard_points'] = pattern_points.tolist()
     j['chessboard_inner_corners'] = pattern_size
-    j['chessboard_spacing_mm'] = square_size
+    j['chessboard_spacing_m'] = square_size
         
     # Read first image to get resolution
     # TODO: use imquery call to retrieve results
@@ -75,7 +64,7 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
             vis = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
             cv2.drawChessboardCorners(vis, pattern_size, corners, found)            
             _, name, _ = splitfn(fname)
-            outfile = os.path.join(debug_dir, name + '_chess.png')
+            outfile = os.path.join(debug_dir, name + '_chessboard.png')
             cv2.imwrite(outfile, vis)
 
         if not found:
@@ -180,10 +169,10 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
         }
         
         # OpenCV untransformed camera orientation is X to the right, Y down,
-        # Z along the view direction (i.e. right-handed). This aligns x,y pixels
-        # coordinates of the image plane with the X,Y coordinates in camera space.
-        # The orientations describe the transform needed to bring a detected chessboard
-        # from its object space into camera space.
+        # Z along the view direction (i.e. right-handed). This aligns X,Y axes
+        # of pixels in the image plane with the X,Y axes in camera space.
+        # The orientations describe the transform needed to bring a detected 
+        # chessboard from its object space into camera space.
         j['chessboard_orientations'] = chessboard_orientations
             
     # Write to JSON
@@ -194,7 +183,7 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
     # Undistort the image with the calibration
     if debug_dir is not None:
         print('')
-        print('Writing undistorted images to %s:' % debug_dir)
+        print('Writing undistorted images to %s directory:' % debug_dir)
         
         for fname in image_files:
             _, name, _ = splitfn(fname)
@@ -204,6 +193,7 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
 
             img = cv2.imread(img_found)
             if img is None:
+                print("Can't find chessboard image!")
                 continue
 
             h, w = img.shape[:2]
@@ -218,6 +208,8 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
             x, y, w, h = roi
             dst = dst[y:y+h, x:x+w]            
             cv2.imwrite(outfile2, dst)
+            
+            print(fname)
 
     cv2.destroyAllWindows()
 
