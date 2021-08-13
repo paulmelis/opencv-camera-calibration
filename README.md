@@ -1,9 +1,10 @@
 # OpenCV camera calibration scripts
 
-Whenever I end up using OpenCV for some task that involved computer vision
-the necessary camera calibration task is always a bit messy, due to having to
-gather the necessary Python code to run the calibration. Here, I tried to gather
-some useful scripts for that task, both for myself, but also for others to use.
+Whenever I end up using OpenCV for some task that involves computer vision
+the necessary camera calibration step is always a bit messy, due to having to
+gather the necessary Python code to run the calibration (and never being really
+sure the values are correct). Here, I tried to gather some useful scripts for 
+that task, both for myself, but also for others to use.
 
 Two scripts are included:
 
@@ -22,6 +23,13 @@ Limitations:
   camera positions on the same side of the chessboard).
 - Only tested with OpenCV 4.5.3 under Python 3.9.6. It probably will work with
   other versions, but it might also not.
+  
+Dependencies:
+
+- Python 3.x
+- OpenCV with Python module installed
+- NumPy
+- Blender 2.9x (for `import_calibration_data.py` only)
 
 ## Example usage (calibration)
 
@@ -29,6 +37,7 @@ Using the included test set in `canon-efs-24mm-crop1.6`:
 
 ```
 $ cd canon-efs-24mm-crop1.6
+# 9x6 inner corners in the chessboard, 2.44 cm between corners, 22.3x14.9 mm sensor size on the camera
 $ ../calibrate.py -c 9x6 -s 0.0244 -j calib.json -S 22.3x14.9 -d debug *.JPG
 Image resolution 5184x3456
 Processing images using 4 threads ....... done
@@ -69,8 +78,9 @@ IMG_0044.JPG
 As can be seen the chessboard pattern is detected in all 7 input images. The
 reconstructed calibration is quite good, at an average reprojection error of 0.16 pixels.
 
-By setting the physical sensor size of the 60D camera with the `-S` option the
-FOV and focal length can be computed in physical units (instead of just in pixels).
+By setting the physical sensor size of the 60D camera used with the `-S` option the
+FOV and focal length can be computed in physical units (instead of only in pixels,
+as given by the camera matrix).
 
 The `calib.json` file will contain all the computed calibration parameters, plus 
 the transformation computed for each image (`chessboard_orientations`). 
@@ -93,7 +103,7 @@ This will read the calibration JSON file and construct a scene with:
 - The chessboard corners as a set of vertices (the `chessboard corners` mesh)
 - A quad textured as a chessboard (the `chessboard` mesh), which is hidden by default
 - A camera for each image in which the chessboard was detected, transformed
-  to match the detected orientation and position. The cameras parameters will
+  to match the detected orientation and position. The camera parameters will
   have been set to match the detected values from the calibration JSON file.
 
 Here you can see the scene for the included test set:
