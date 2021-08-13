@@ -45,7 +45,15 @@ Processing images using 4 threads ....... done
 Found chessboards in 7 out of 7 images
 
 RMS: 1.1816547272502802
-Total reprojection error: 0.159998
+Computing reprojection error:
+[IMG_0038.JPG] 0.179007
+[IMG_0039.JPG] 0.173196
+[IMG_0040.JPG] 0.173777
+[IMG_0041.JPG] 0.159977
+[IMG_0042.JPG] 0.152262
+[IMG_0043.JPG] 0.128836
+[IMG_0044.JPG] 0.152934
+Average reprojection error: 0.159998 +/- 0.016064
 
 Camera matrix:
  [[5.86740909e+03 0.00000000e+00 2.59146647e+03]
@@ -65,9 +73,9 @@ Aspect ratio: 1.001614
 [IMG_0043.JPG] rotation (-0.039782, -0.004438, 0.005338), translation (-0.098927, -0.057666, 0.430095)
 [IMG_0044.JPG] rotation (-0.818372, -0.007559, 0.001030), translation (-0.094439, -0.047858, 0.528516)
 
-Writing undistorted images to debug:
-IMG_0038.JPG
-IMG_0039.JPG
+Writing undistorted images to debug directory:
+less IMG_0038.JPG
+calib.jsonIMG_0039.JPG
 IMG_0040.JPG
 IMG_0041.JPG
 IMG_0042.JPG
@@ -80,7 +88,8 @@ reconstructed calibration is quite good, at an average reprojection error of 0.1
 
 By setting the physical sensor size of the 60D camera used with the `-S` option the
 FOV and focal length can be computed in physical units (instead of only in pixels,
-as given by the camera matrix).
+as given by the camera matrix). The derived focal length is 25.2mm, which is pretty close
+to the actual 24mm of the lens.
 
 The `calib.json` file will contain all the computed calibration parameters, plus 
 the transformation computed for each image (`chessboard_orientations`). 
