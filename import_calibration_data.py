@@ -118,15 +118,18 @@ camera_collection = bpy.data.collections['Collection']
 camera_collection.name = 'Cameras'
 
 if 'sensor_size_mm' not in j:
-    print("Warning: camera sensor size value not available, set it manually!")
+    print('Warning: camera sensor size value not available, you need to set it manually!')
+if 'fov_degrees' not in j:
+    print('Warning: camera FOV not available, you need to set it manually!')
 
 for img_file, values in j['chessboard_orientations'].items():
     
     camdata = bpy.data.cameras.new(name=img_file)            
     if 'sensor_size_mm' in j:
         camdata.sensor_width = j['sensor_size_mm'][0]
-    camdata.lens_unit = 'FOV'
-    camdata.angle = radians(j['fov_degrees'][0])
+    if 'fov_degrees' in j:
+        camdata.lens_unit = 'FOV'
+        camdata.angle = radians(j['fov_degrees'][0])
 
     camobj = bpy.data.objects.new(img_file, camdata)
     

@@ -91,6 +91,7 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
     cb_index = 0
     cb_to_image_index = {}
     
+    # Sort by file name
     results.sort(key = lambda e: e[0])
     for img_index, result in enumerate(results):
         corners = result[1]
@@ -122,13 +123,20 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
     
     # Compute reprojection error
     # After https://docs.opencv2.org/4.5.2/dc/dbb/tutorial_py_calibration.html
-    mean_error = 0
-    for i in range(num_chessboards):
-        img_points2, _ = cv2.projectPoints(obj_points[i], rvecs[i], tvecs[i], camera_matrix, dist_coefs)        
-        error = cv2.norm(img_points[i], img_points2, cv2.NORM_L2)/len(img_points2)
-        mean_error += error
-    reprojection_error = mean_error/num_chessboards
-    print("Total reprojection error: %.6f" % reprojection_error)
+    print('Computing reprojection error:')
+    reprod_error = {}
+    errors = []
+    for cb_index in range(num_chessboards):
+        img_points2, _ = cv2.projectPoints(obj_points[cb_index], rvecs[cb_index], tvecs[cb_index], camera_matrix, dist_coefs)        
+        error = cv2.norm(img_points[cb_index], img_points2, cv2.NORM_L2) / len(img_points2)
+        img_index = cb_to_image_index[cb_index]
+        img_file = image_files[img_index]
+        print('[%s] %.6f' % (img_file, error))
+        reprod_error[img_file] = error
+        errors.append(error)
+    reprojection_error_avg = np.average(errors)
+    reprojection_error_stddev = np.std(errors)
+    print("Average reprojection error: %.6f +/- %.6f" % (reprojection_error_avg, reprojection_error_stddev))
     print()
     print("Camera matrix:\n", camera_matrix)    
     print("Distortion coefficients:", dist_coefs.ravel())
@@ -136,7 +144,7 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
     j['camera_matrix'] = camera_matrix.tolist()
     j['distortion_coefficients'] = dist_coefs.ravel().tolist()
     j['rms'] = rms
-    j['reprojection_error'] = reprojection_error
+    j['reprojection_error'] = {'average': reprojection_error_avg, 'stddev': reprojection_error_stddev, 'image': reprod_error }
     
     if sensor_size is not None:
         fovx, fovy, focal_length, principal_point, aspect_ratio = \
