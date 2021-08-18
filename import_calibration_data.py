@@ -142,11 +142,13 @@ for img_file, values in j['chessboard_orientations'].items():
     cx = M[0][2]
     cy = M[1][2]
     
-    # XXX The Blender properties for these don't allow aribitrary floats, but only
-    # values in the range [1,200], with a granularity of 0.1
     pixel_aspect = fy / fx
-    scene.render.pixel_aspect_x = 1.0
-    scene.render.pixel_aspect_y = pixel_aspect
+    if pixel_aspect > 1:
+        scene.render.pixel_aspect_x = 1.0
+        scene.render.pixel_aspect_y = pixel_aspect
+    else:
+        scene.render.pixel_aspect_x = 1.0 / pixel_aspect
+        scene.render.pixel_aspect_y = 1.0 
         
     # Thanks to https://www.rojtberg.net/1601/from-blender-to-opencv-camera-and-back/
     camdata.shift_x = -(cx / W - 0.5)
