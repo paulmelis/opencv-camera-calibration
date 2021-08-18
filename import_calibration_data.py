@@ -142,6 +142,8 @@ for img_file, values in j['chessboard_orientations'].items():
     cx = M[0][2]
     cy = M[1][2]
     
+    # XXX The Blender properties for these don't allow aribitrary floats, but only
+    # values in the range [1,200], with a granularity of 0.1
     pixel_aspect = fy / fx
     scene.render.pixel_aspect_x = 1.0
     scene.render.pixel_aspect_y = pixel_aspect
