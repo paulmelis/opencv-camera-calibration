@@ -81,8 +81,9 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
         pool = ThreadPool(threads)
         results = pool.map(process_image, image_files)
         
-    sys.stdout.write(' done')
+    sys.stdout.write(' done\n')
     sys.stdout.flush()
+    print()
     
     # Prepare calibration input
 
@@ -105,7 +106,6 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
 
     num_chessboards = cb_index
         
-    print('\n')
     print('Found chessboards in %d out of %d images' % (num_chessboards, len(image_files)))
     print()
     
@@ -118,8 +118,8 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
     rms, camera_matrix, dist_coefs, rvecs, tvecs = \
         cv2.calibrateCamera(obj_points, img_points, (w, h), None, None) #, None, None, None)
 
-    #print(per_view_errors)
     print("RMS:", rms)
+    print()
     
     # Compute reprojection error
     # After https://docs.opencv2.org/4.5.2/dc/dbb/tutorial_py_calibration.html
@@ -147,8 +147,11 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
     j['reprojection_error'] = {'average': reprojection_error_avg, 'stddev': reprojection_error_stddev, 'image': reprod_error }
     
     if sensor_size is not None:
+        
         fovx, fovy, focal_length, principal_point, aspect_ratio = \
             cv2.calibrationMatrixValues(camera_matrix, (w,h), sensor_size[0], sensor_size[1])
+            
+        print()            
         print('FOV: %.6f %.6f degrees' % (fovx, fovy))
         print('Focal length: %.6f mm' % focal_length)
         print('Principal point: %.6f %.6f mm' % principal_point)

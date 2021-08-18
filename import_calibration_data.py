@@ -29,8 +29,10 @@ calib_dir = os.path.split(calib_file)[0]
 
 # Scene resolution
 
-scene.render.resolution_x = j['image_resolution'][0]
-scene.render.resolution_y = j['image_resolution'][1]
+W, H = j['image_resolution']
+
+scene.render.resolution_x = W
+scene.render.resolution_y = H
 
 # Chessboard
 
@@ -125,12 +127,29 @@ if 'fov_degrees' not in j:
 for img_file, values in j['chessboard_orientations'].items():
     
     camdata = bpy.data.cameras.new(name=img_file)            
+    
     if 'sensor_size_mm' in j:
+        camdata.sensor_fit = 'HORIZONTAL'
         camdata.sensor_width = j['sensor_size_mm'][0]
+                
     if 'fov_degrees' in j:
         camdata.lens_unit = 'FOV'
-        camdata.angle = radians(j['fov_degrees'][0])
-
+        camdata.angle = radians(j['fov_degrees'][0])    
+        
+    M = j['camera_matrix']
+    fx = M[0][0]
+    fy = M[1][1]
+    cx = M[0][2]
+    cy = M[1][2]
+    
+    pixel_aspect = fy / fx
+    scene.render.pixel_aspect_x = 1.0
+    scene.render.pixel_aspect_y = pixel_aspect
+        
+    # Thanks to https://www.rojtberg.net/1601/from-blender-to-opencv-camera-and-back/
+    camdata.shift_x = -(cx / W - 0.5)
+    camdata.shift_y = (cy - 0.5 * H) / W
+    
     camobj = bpy.data.objects.new(img_file, camdata)
     
     t = values['translation']
