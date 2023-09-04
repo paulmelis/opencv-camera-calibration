@@ -8,9 +8,10 @@ def splitfn(fname):
     name, ext = os.path.splitext(fname)
     return path, name, ext
 
-def main(image_files, pattern_size, square_size, threads, json_file=None, debug_dir=None):
+def main(image_files, fisheye, pattern_size, square_size, threads, json_file=None, debug_dir=None):
     """    
     image_files: list of image file names
+    fisheye: set to True to use fisheye camera model
     pattern_size: the number of *inner* points! So for a grid of 10x7 *squares* there's 9x6 inner points
     square_size: the real-world dimension of a chessboard square, in meters
     threads: number of threads to use
@@ -21,9 +22,12 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
     # JSON data
     j = {}
 
+    # Real-world 3D corner "positions"
     pattern_points = np.zeros((np.prod(pattern_size), 3), np.float32)
     pattern_points[:, :2] = np.indices(pattern_size).T.reshape(-1, 2)
-    pattern_points *= square_size    
+    # https://github.com/opencv/opencv/issues/9150#issuecomment-674664643
+    pattern_points = np.expand_dims(np.asarray(pattern_points), -2)
+    pattern_points *= square_size
     
     j['chessboard_points'] = pattern_points.tolist()
     j['chessboard_inner_corners'] = pattern_size
@@ -41,7 +45,7 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
     
     j['image_resolution'] = (w, h)
     
-    # Process all images
+    # Process all images to find chessboards
 
     def process_image(fname):
         sys.stdout.write('.')
@@ -49,13 +53,14 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
         
         img = cv2.imread(fname, 0)
         if img is None:
-            return (fname, None, 'Failed to load')
+            return (fname, 'Failed to load')
             
         if w != img.shape[1] or h != img.shape[0]:
-            return (fname, None, "Size %dx%d doesn't match" % (img.shape[1], img.shape[0]))
+            return (fname, "Size %dx%d doesn't match" % (img.shape[1], img.shape[0]))
         
         found, corners = cv2.findChessboardCorners(img, pattern_size)
         if found:
+            # Refine corner positions
             term = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 30, 0.1)
             cv2.cornerSubPix(img, corners, (5, 5), (-1, -1), term)
 
@@ -68,15 +73,15 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
             cv2.imwrite(outfile, vis)
 
         if not found:
-            return (fname, None, 'Chessboard not found')
+            return (fname, 'Chessboard not found')
 
-        return (fname, corners, pattern_points)
+        return (fname, corners)
     
     if threads <= 1:
-        sys.stdout.write('Processing images ')
+        sys.stdout.write('Processing %d images' % len(image_files))
         results = [process_image(fname) for fname in image_files]
     else:
-        sys.stdout.write('Processing images using %d threads ' % threads)
+        sys.stdout.write('Processing %d images using %d threads ' % (len(image_files), threads))
         from multiprocessing.dummy import Pool as ThreadPool
         pool = ThreadPool(threads)
         results = pool.map(process_image, image_files)
@@ -88,46 +93,55 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
     # Prepare calibration input
 
     obj_points = []
-    img_points = []        
+    img_points = []
     cb_index = 0
     cb_to_image_index = {}
     
     # Sort by file name
     results.sort(key = lambda e: e[0])
-    for img_index, result in enumerate(results):
-        corners = result[1]
-        if corners is None:
-            print('[%s] FAILED: %s' % (result[0], result[2]))
+    for img_index, (fname, corners) in enumerate(results):
+        if isinstance(corners, str):
+            print('[%s] Ignoring image: %s' % (fname, corners))
             continue
         img_points.append(corners)
-        obj_points.append(result[2])
+        obj_points.append(pattern_points)
         cb_to_image_index[cb_index] = img_index
         cb_index += 1
 
     num_chessboards = cb_index
-        
+    
     print('Found chessboards in %d out of %d images' % (num_chessboards, len(image_files)))
     print()
     
     if num_chessboards == 0:
-        print('No chessboards to use!')
+        print('No chessboards to use! Was the correct chessboard size set using the -c option?')
         sys.exit(-1)
 
     # Calculate camera matrix, distortion, etc
-    
+
+    calibrate_func = cv2.fisheye.calibrate if fisheye else cv2.calibrateCamera
+
+    print('Calibrating camera using %d images' % len(img_points))
     rms, camera_matrix, dist_coefs, rvecs, tvecs = \
-        cv2.calibrateCamera(obj_points, img_points, (w, h), None, None) #, None, None, None)
+        calibrate_func(obj_points, img_points, (w, h), None, None) #, None, None, None)
 
     print("RMS:", rms)
     print()
-    
+    print("Camera matrix:\n", camera_matrix)
+    print()
+    print("Distortion coefficients:\n", dist_coefs.ravel())
+    print()
+
     # Compute reprojection error
     # After https://docs.opencv2.org/4.5.2/dc/dbb/tutorial_py_calibration.html
     print('Computing reprojection error:')
+
+    project_func = cv2.fisheye.projectPoints if fisheye else cv2.projectPoints
+
     reprod_error = {}
     errors = []
     for cb_index in range(num_chessboards):
-        img_points2, _ = cv2.projectPoints(obj_points[cb_index], rvecs[cb_index], tvecs[cb_index], camera_matrix, dist_coefs)        
+        img_points2, _ = project_func(obj_points[cb_index], rvecs[cb_index], tvecs[cb_index], camera_matrix, dist_coefs)
         error = cv2.norm(img_points[cb_index], img_points2, cv2.NORM_L2) / len(img_points2)
         img_index = cb_to_image_index[cb_index]
         img_file = image_files[img_index]
@@ -136,10 +150,8 @@ def main(image_files, pattern_size, square_size, threads, json_file=None, debug_
         errors.append(error)
     reprojection_error_avg = np.average(errors)
     reprojection_error_stddev = np.std(errors)
+    print()    
     print("Average reprojection error: %.6f +/- %.6f" % (reprojection_error_avg, reprojection_error_stddev))
-    print()
-    print("Camera matrix:\n", camera_matrix)    
-    print("Distortion coefficients:", dist_coefs.ravel())
     
     j['camera_matrix'] = camera_matrix.tolist()
     j['distortion_coefficients'] = dist_coefs.ravel().tolist()
@@ -235,6 +247,7 @@ if __name__ == '__main__':
     sensor_size = None
     square_size = 0.034
     threads = 4
+    fisheye = False
     
     # XXX use defaults
     def usage():
@@ -247,6 +260,7 @@ usage:
 
 default values:
     -c <w>x<h>              Number of *inner* corners of the chessboard pattern (default: 9x6)
+    -f                      Fit fisheye camera model (default: regular perspective model)
     -s <size>               Square size in m (default: 0.0225)
     -t <threads>            Number of threads to use (default: 4)
     -j <calibration.json>   Write calibration data to JSON file
@@ -255,7 +269,7 @@ default values:
 ''')
 
     try:
-        options, args = getopt.getopt(sys.argv[1:], 'c:d:j:S:s:t:')
+        options, args = getopt.getopt(sys.argv[1:], 'c:d:fj:S:s:t:')
     except getopt.GetoptError as err:
         # print help information and exit:
         print(err)  # will print something like "option -a not recognized"
@@ -267,6 +281,10 @@ default values:
             corners = tuple(map(int, v.split('x')))
         elif o == '-d':
             debug_dir = v
+            # Guard against option being interpreted as directory name
+            assert debug_dir[0] != '-'
+        elif o == '-f':
+            fisheye = True
         elif o == '-j':
             json_file = v
         elif o == '-S':
@@ -289,4 +307,4 @@ default values:
         
     image_files = args
            
-    main(image_files, corners, square_size, threads, json_file, debug_dir)
+    main(image_files, fisheye, corners, square_size, threads, json_file, debug_dir)

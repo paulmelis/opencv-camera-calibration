@@ -21,8 +21,8 @@ Limitations:
   symmetrical and an asymmetrical one. The asymmetrical version has the advantage
   of leading to consistent chessboard orientations being detected (all computed 
   camera positions on the same side of the chessboard).
-- Only tested with OpenCV 4.5.3 under Python 3.9.6. It probably will work with
-  other versions, but it might also not.
+- Tested with OpenCV 4.5.3 under Python 3.9.6 and OpenCV 4.8.0 under Python 3.11.5. 
+  It probably will work with other versions, but it also might not.
   
 Dependencies:
 
@@ -40,11 +40,21 @@ $ cd canon-efs-24mm-crop1.6
 # 9x6 inner corners in the chessboard, 2.44 cm between corners, 22.3x14.9 mm sensor size on the camera
 $ ../calibrate.py -c 9x6 -s 0.0244 -j calib.json -S 22.3x14.9 -d debug *.JPG
 Image resolution 5184x3456
-Processing images using 4 threads ....... done
+Processing 7 images using 4 threads ....... done
 
 Found chessboards in 7 out of 7 images
 
-RMS: 1.1816547272502802
+Calibrating camera using 7 images
+RMS: 1.18165472725028
+
+Camera matrix:
+ [[5.86740909e+03 0.00000000e+00 2.59146647e+03]
+ [0.00000000e+00 5.87687664e+03 1.72775387e+03]
+ [0.00000000e+00 0.00000000e+00 1.00000000e+00]]
+
+Distortion coefficients:
+ [-0.12291868  0.17975773 -0.00165213 -0.00162771 -0.94774414]
+
 Computing reprojection error:
 [IMG_0038.JPG] 0.179007
 [IMG_0039.JPG] 0.173196
@@ -53,13 +63,9 @@ Computing reprojection error:
 [IMG_0042.JPG] 0.152262
 [IMG_0043.JPG] 0.128836
 [IMG_0044.JPG] 0.152934
+
 Average reprojection error: 0.159998 +/- 0.016064
 
-Camera matrix:
- [[5.86740909e+03 0.00000000e+00 2.59146647e+03]
- [0.00000000e+00 5.87687664e+03 1.72775387e+03]
- [0.00000000e+00 0.00000000e+00 1.00000000e+00]]
-Distortion coefficients: [-0.12291868  0.17975774 -0.00165213 -0.00162771 -0.94774417]
 FOV: 47.668066 32.770231 degrees
 Focal length: 25.239819 mm
 Principal point: 11.147705 7.448939 mm
@@ -74,8 +80,8 @@ Aspect ratio: 1.001614
 [IMG_0044.JPG] rotation (-0.818372, -0.007559, 0.001030), translation (-0.094439, -0.047858, 0.528516)
 
 Writing undistorted images to debug directory:
-less IMG_0038.JPG
-calib.jsonIMG_0039.JPG
+IMG_0038.JPG
+IMG_0039.JPG
 IMG_0040.JPG
 IMG_0041.JPG
 IMG_0042.JPG
